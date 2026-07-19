@@ -6,9 +6,15 @@ import re
 from datetime import datetime
 
 # regex time
-def parse_statement(pdf_path, year):
+### VV THIS IS BUILT TO PARSE THE BMO CREDIT STATEMENT TOT
+def parse_creditstatement(pdf_path):
     transactions = []
     total_balance = 0
+    statement_date = "2026"
+
+    statement_paper_date = re.compile(r"Statement date (?P<statementDate>[A-Z][a-z]{2}\. \d{1,2}\, \d{4})")
+    # Statement period May. 22, 2026 - June. 21, 2026 << kalo mau di apa2in
+
     total_pattern = re.compile(r"Total balance\s\$(?P<total>\d+\.\d{2})")
     # Total balance $722.26
     pattern = re.compile(r"(?P<trans_month>[A-Z][a-z]{2})\. (?P<trans_date>\d{1,2})\s?[A-Z][a-z]{2}\. \d{1,2} (?P<desc>.+?) (?P<amount>\d+\.\d{2})(?P<CREDIT>\s+CR)?$")
@@ -19,6 +25,11 @@ def parse_statement(pdf_path, year):
             page_text = page.extract_text()
             for line in page_text.split("\n"):
 
+                statement_date_match = statement_paper_date.search(line)
+                if statement_date_match:
+                    statement_date = statement_date_match.group("statementDate")
+                    # print(statement_date)
+
                 total_match = total_pattern.search(line)
                 if total_match:
                     total_balance = float(total_match.group("total"))
@@ -27,16 +38,60 @@ def parse_statement(pdf_path, year):
                 if match:
                     cr = match.group("CREDIT")
                     transactions.append({
-                        "date": datetime.strptime(match.group("trans_month") +" "+ match.group("trans_date") +" "+ str(year), "%b %d %Y").date(),
+                        # "date": datetime.strptime(match.group("trans_month") +" "+ match.group("trans_date") +" "+ statement_date[-4:], "%b %d %Y").date(),
+                        "date": match.group("trans_month") +" "+ match.group("trans_date") +" "+ statement_date[-4:],
                         "description": match.group("desc"),
-                        "amount": float(match.group("amount")),
-                        "type": "credit" if cr else "debit"
+                        "amount": -float(match.group("amount")) if cr else float(match.group("amount")),
+                        # negative if inflow!!
+                        # "type": "Credit"
                     })
             # print(f"Page {page.page_number}:\\n{page_text}\\n")
-    return transactions, total_balance
+    return statement_date, transactions, total_balance
+
+# convert list of dicts to list of lists
+def transaction_to_rows(transactions):
+    big_list = []
+    for entry in transactions:
+        small_list = []
+        small_list.append(entry.get("date"))
+        small_list.append(entry.get("description"))
+        small_list.append(entry.get("amount"))
+        # small_list.append(entry.get("type"))
+        big_list.append(small_list)
+        # print(small_list)
+    return big_list
+
+def parse_chequingstatement(pdf_path):
+    transaction = []
+    total_balance = 0
+    # XXXXXXXXXXX-866 82.29 2,838.64 2,916.29 159.94
+    ## account openingbal totaldeducted totaladded closingbal
+    statement_date = "2026"
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table({
+                "vertical_strategy": "text",
+                "horizontal_strategy": "lines",
+                # "intersection_x_tolerance": 10,
+                "intersection_y_tolerance": 0.5
+            })
+            if table:
+                for row in table:
+                    print(row)
+                # date_desc = row[0]
+                # outflow = row[2]
+                # inflow = row[4]
+                # balance = row[5]
+            # print(f"Page {page.page_number}:\\n{table}\\n")
 
 # something about protecting debug prints
 if __name__ == "__main__":
-    transactions, total = parse_statement("BankStatementPDFs/June 21, 2026.pdf", 2026)
-    print(transactions)
-    print(total)
+    statement_date, transactions, total = parse_creditstatement("BankStatementPDFs/June 21, 2026.pdf")
+    # print(statement_date)
+    # print(transactions)
+    # print(total)
+    list_of_lists = transaction_to_rows(transactions)
+    # print(list_of_lists)
+
+    parse_chequingstatement("BankStatementPDFs/June 25, 2026.pdf")

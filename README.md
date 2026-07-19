@@ -21,3 +21,19 @@ Year for the date object in list -- lookout for december, take the year from the
 can do location analysis too in the desc
 input type (credit, chequing, savings) assigned on when importing the list to the corresponding worksheet
 
+## July 18th:
+I got exhausted from my food service job but now I've got time and tidied my receipts. I realize the receipts have different date formats and that would be hell to upload. Unless I do machine learning on the image to extract it.
+Anyways I want this functional soon bcs I have so much receipt backlog all the way from September... I do not want to be manually matching these receipts.
+Today I plan to have the bank statement JSON uploadable to the google sheets.
+Fixed up TestParser.py & TestConnection.py to be modular with minimized inputs
+Realized the Regex i made only caters to my credit bank statements. I need to make a separate regex to read my chequing statements...
+Working on the chequing bank statement parser. It seems I have come into the problem of the parser reading differently of the tables per page. I have no choice but to read it as table as the spaces between columns is monumental to differentiating if it is an inflow or outflow.
+
+WIP:
+Receipt parser -- have a cash/debit/credit for the reconciliation process to skip cash
+If no receipt - bank statement entry still goes thru
+if no bank statement entry -- what happens to receipt?
+
+
+### Data flow:
+all bank statements -> into one sheet -> parse into separate months biweekly (2x a month)

@@ -3,3 +3,6 @@ PythonToSheetsServiceAccount.json
 
 # folder of my bank transactions
 /BankStatementPDFs
+
+# pycache
+/__pycache__
