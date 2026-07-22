@@ -1,12 +1,13 @@
 import pdfplumber
 # https://unstract.com/blog/guide-to-pdfplumber-text-and-table-extraction-capabilities/#elementor-toc__heading-anchor-1
+# https://deepwiki.com/jsvine/pdfplumber/3.3-table-extraction
 import re
 # https://www.w3schools.com/python/python_regex.asp
 # https://www.geeksforgeeks.org/python/re-compile-in-python/
 from datetime import datetime
 
 # regex time
-### VV THIS IS BUILT TO PARSE THE BMO CREDIT STATEMENT TOT
+### VV THIS IS BUILT TO PARSE THE CREDIT STATEMENT 
 def parse_creditstatement(pdf_path):
     transactions = []
     total_balance = 0
@@ -61,29 +62,88 @@ def transaction_to_rows(transactions):
         # print(small_list)
     return big_list
 
+## VV meant to parse only the chequing statement
 def parse_chequingstatement(pdf_path):
-    transaction = []
-    total_balance = 0
-    # XXXXXXXXXXX-866 82.29 2,838.64 2,916.29 159.94
-    ## account openingbal totaldeducted totaladded closingbal
-    statement_date = "2026"
+    transactions = []
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            table = page.extract_table({
-                "vertical_strategy": "text",
-                "horizontal_strategy": "lines",
-                # "intersection_x_tolerance": 10,
-                "intersection_y_tolerance": 0.5
-            })
-            if table:
+            if page.page_number == 1:
+                page1_table_area = page.crop((60.0, 520, 600 ,735.0))
+                column_lines = [60, 100, 348.24, 436.31999999999994, 511.91999999999996, 533.9599995]
+
+            #     # debugging
+            #     page1_table_image = page1_table_area.to_image()
+            #     page1_table_image.debug_tablefinder(table_settings={
+            #         "vertical_strategy": "explicit",
+            #         "explicit_vertical_lines": column_lines,
+            #         "horizontal_strategy": "lines",
+            #         })
+            #     page1_table_image.show()
+            #    # test = page1_table_area.debug_tablefinder(table_settings={"vertical_strategy": "text", "horizontal_strategy": "lines",})
+            #    # print(test.cells)
+               
+                test = page1_table_area.extract_text_lines(return_chars=False)[0] # I CANT USE THIS SOLUTION IF THE COLUMN IS IMPORTANT >.<
+                print(test)
+                table = page1_table_area.extract_table({
+                    "vertical_strategy": "explicit",
+                    "explicit_vertical_lines": column_lines,
+                    "horizontal_strategy": "lines",
+                    })
                 for row in table:
                     print(row)
-                # date_desc = row[0]
-                # outflow = row[2]
-                # inflow = row[4]
-                # balance = row[5]
+            # else:
+            #     table = page.extract_tables({
+            #         "vertical_strategy": "text",
+            #         "horizontal_strategy": "lines",
+            #         # "intersection_x_tolerance": 10,
+            #     })
+
+            # # visual debugging
+            # image = page.to_image()
+            # image.debug_tablefinder(table_settings={"vertical_strategy": "text", "horizontal_strategy": "lines",})
+            # image.show()
+            # test = page.debug_tablefinder(table_settings={"vertical_strategy": "text", "horizontal_strategy": "lines",})
+            # print(test.cells)
+
+            # if table:
+            #     prev_balance = 0
+            #     for row in table:
+            #         # print(row)
+            #         if len(row) == 4:
+            #             date_desc = row[0]
+            #             date = date_desc[0:3] + " " + date_desc[3:5]
+            #             desc = date_desc[6:]
+            #             outflow = row[1]
+            #             inflow = row[2]
+            #             balance = row[3]
+            #             transactions.append({
+            #                 "date": date,
+            #                 "desc": desc,
+            #                 "outflow": outflow,
+            #                 "inflow": inflow
+            #             })
+            #             prev_balance = balance
+
+            #         elif len(row) == 1:
+            #             pattern = re.compile(r"(?P<trans_month>[A-Z][a-z]{2})(?P<trans_date>\d{1,2})\s(?P<desc>.+?) (?P<amount>\d+\.\d{2}) (?P<balance>\d+\.\d{2})$")
+            #             match = pattern.search(row[0])
+            #             if match:
+            #                 amount = match.group("amount")
+            #                 balance = match.group("balance")
+            #                 # if (balance - amount) == transactions:
+
+            #                 transactions.append({
+            #                     "date": match.group("trans_month") +" "+ match.group("trans_date"),
+            #                     "desc": match.group("desc"),
+            #                     "amount": amount,
+            #                     "balance": balance
+            #                     # gotta do some calc with the previous entry to see if balance grows or shrinks to know if this is an inflow or outflow
+            #                 })
+            #     print(transactions)
             # print(f"Page {page.page_number}:\\n{table}\\n")
+
+
 
 # something about protecting debug prints
 if __name__ == "__main__":

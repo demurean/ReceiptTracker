@@ -34,6 +34,14 @@ Receipt parser -- have a cash/debit/credit for the reconciliation process to ski
 If no receipt - bank statement entry still goes thru
 if no bank statement entry -- what happens to receipt?
 
+## July 21st:
+Since these bank statements are only parsing my bank statements (and given they do not change their formatting).
+I've decided I am going to crop the PDF since the chequing statement has been problematic (defining the border 1 column short, inconsisten column definition across pages).
+The first row in each page is hell... Why are the newlines fused. The first row is being ignored if i crop it right bcs there is no visible line defining the ceiling...
+I can't use "text" horizontal strategy bcs one entry can occupy two "rows" (it uses newline fsr)
+thanks to RickVincent's discussion on the pdfplumber discussion page. ~~I've got it :)~~ NVM that answer was from 2025. things changed since then probably..?
+Ending today on refining the extraction on chequing still. first row extraction is tricky...
+
 
 ### Data flow:
 all bank statements -> into one sheet -> parse into separate months biweekly (2x a month)
