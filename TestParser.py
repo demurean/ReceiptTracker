@@ -67,37 +67,43 @@ def parse_chequingstatement(pdf_path):
     transactions = []
 
     with pdfplumber.open(pdf_path) as pdf:
+        column_lines = [60, 100, 348.24, 436.31999999999994, 511.91999999999996, 533.9599995]
         for page in pdf.pages:
             if page.page_number == 1:
-                page1_table_area = page.crop((60.0, 520, 600 ,735.0))
-                column_lines = [60, 100, 348.24, 436.31999999999994, 511.91999999999996, 533.9599995]
-
-            #     # debugging
-            #     page1_table_image = page1_table_area.to_image()
-            #     page1_table_image.debug_tablefinder(table_settings={
-            #         "vertical_strategy": "explicit",
-            #         "explicit_vertical_lines": column_lines,
-            #         "horizontal_strategy": "lines",
-            #         })
-            #     page1_table_image.show()
-            #    # test = page1_table_area.debug_tablefinder(table_settings={"vertical_strategy": "text", "horizontal_strategy": "lines",})
-            #    # print(test.cells)
+                page1_table_area = page.crop((60.0, 526, 600 ,735.0)) # x0, top, x1, bottom
+                first_row = page1_table_area.bbox[1]
                
-                test = page1_table_area.extract_text_lines(return_chars=False)[0] # I CANT USE THIS SOLUTION IF THE COLUMN IS IMPORTANT >.<
-                print(test)
                 table = page1_table_area.extract_table({
                     "vertical_strategy": "explicit",
                     "explicit_vertical_lines": column_lines,
                     "horizontal_strategy": "lines",
+                    "explicit_horizontal_lines": [first_row]
                     })
-                for row in table:
-                    print(row)
-            # else:
-            #     table = page.extract_tables({
-            #         "vertical_strategy": "text",
-            #         "horizontal_strategy": "lines",
-            #         # "intersection_x_tolerance": 10,
-            #     })
+
+            else:
+                pagex_table_area = page.crop((60, 110, 600, 735))
+                # first_row = page1_table_area.bbox[1]
+                # debugging
+                pagex_table_image = pagex_table_area.to_image()
+                pagex_table_image.debug_tablefinder(table_settings={
+                    "vertical_strategy": "explicit",
+                    "explicit_vertical_lines": column_lines,
+                    "horizontal_strategy": "lines",
+                    # "explicit_horizontal_lines": [first_row]
+                    })
+                pagex_table_image.show()
+                pagex_table_image.save("BankStatementPDFs/secondpagechequingtable.png")
+                test = pagex_table_area.debug_tablefinder(table_settings={"vertical_strategy": "explicit", "explicit_vertical_lines": column_lines, "horizontal_strategy": "lines",})
+                print(test.cells)
+                
+                # table = page.extract_tables({
+                #     "vertical_strategy": "explicit",
+                #     "explicit_vertical_lines": column_lines,
+                #     "horizontal_strategy": "lines",
+                #     # "explicit_horizontal_lines": 
+                # })
+                # for row in table:
+                #     print(row)
 
             # # visual debugging
             # image = page.to_image()

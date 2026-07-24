@@ -15,3 +15,4 @@ list_of_lists = transaction_to_rows(transactions)
 wks.append_rows(list_of_lists, table_range="A1:B1")
 
 # Chequing Statement
+wks = get_or_create_sheet(SpreadSheet, "Chequing Statement", headers)
