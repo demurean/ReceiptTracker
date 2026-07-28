@@ -69,6 +69,7 @@ def chequingsavings_transaction_to_rows(transactions):
         row.append(entry.get("description"))
         row.append(entry.get("outflow"))
         row.append(entry.get("inflow"))
+        row.append(entry.get("balance"))
         
         if entry.get("description") == "Openingbalance":
             continue
@@ -81,6 +82,7 @@ def parse_chequingsavingsstatement(pdf_path):
     transactions = []
     final_balance = 0
     opening_balance = 0
+    statement_date = "2026"
 
     with pdfplumber.open(pdf_path) as pdf:
         # extract statement date
@@ -132,9 +134,9 @@ def parse_chequingsavingsstatement(pdf_path):
                     inflow = row[3]
                     balance = row[4]
                     final_balance = balance
-                    #########################
+                    # ------------------------------------------------
                     transactions.append({
-                        "date": date_month + " " + date_day,
+                        "date": date_month + " " + date_day +" "+ statement_date[-4:],
                         "description": desc,
                         "outflow": outflow,
                         "inflow": inflow,
