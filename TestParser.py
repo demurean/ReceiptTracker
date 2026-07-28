@@ -6,14 +6,15 @@ import re
 # https://www.geeksforgeeks.org/python/re-compile-in-python/
 from datetime import datetime
 
-# regex time
+### NOTE: This file is meant to parse directly from the pdf statements
+
 ### VV THIS IS BUILT TO PARSE THE CREDIT STATEMENT 
 def parse_creditstatement(pdf_path):
     transactions = []
     total_balance = 0
     statement_date = "2026"
 
-    statement_paper_date = re.compile(r"Statement date (?P<statementDate>[A-Z][a-z]{2}\. \d{1,2}\, \d{4})")
+    statement_paper_date_pattern = re.compile(r"Statement date (?P<statementDate>[A-Z][a-z]{2}\. \d{1,2}\, \d{4})")
     # Statement period May. 22, 2026 - June. 21, 2026 << kalo mau di apa2in
 
     total_pattern = re.compile(r"Total balance\s\$(?P<total>\d+\.\d{2})")
@@ -26,7 +27,7 @@ def parse_creditstatement(pdf_path):
             page_text = page.extract_text()
             for line in page_text.split("\n"):
 
-                statement_date_match = statement_paper_date.search(line)
+                statement_date_match = statement_paper_date_pattern.search(line)
                 if statement_date_match:
                     statement_date = statement_date_match.group("statementDate")
                     # print(statement_date)
@@ -50,26 +51,53 @@ def parse_creditstatement(pdf_path):
     return statement_date, transactions, total_balance
 
 # convert list of dicts to list of lists
-def transaction_to_rows(transactions):
+def credit_transaction_to_rows(transactions):
     big_list = []
     for entry in transactions:
         small_list = []
         small_list.append(entry.get("date"))
         small_list.append(entry.get("description"))
         small_list.append(entry.get("amount"))
-        # small_list.append(entry.get("type"))
         big_list.append(small_list)
-        # print(small_list)
     return big_list
 
-## VV meant to parse only the chequing statement
-def parse_chequingstatement(pdf_path):
+def chequingsavings_transaction_to_rows(transactions):
+    big_list = []
+    for entry in transactions:
+        row = []
+        row.append(entry.get("date"))
+        row.append(entry.get("description"))
+        row.append(entry.get("outflow"))
+        row.append(entry.get("inflow"))
+        
+        if entry.get("description") == "Openingbalance":
+            continue
+        else:
+            big_list.append(row)
+    return big_list
+
+## VV meant to parse only the chequing statement (and savings bcs they have same format)
+def parse_chequingsavingsstatement(pdf_path):
     transactions = []
+    final_balance = 0
+    opening_balance = 0
 
     with pdfplumber.open(pdf_path) as pdf:
-        column_lines = [60, 100, 348.24, 436.31999999999994, 511.91999999999996, 533.9599995]
+        # extract statement date
+        date_page = pdf.pages[0].extract_text()
+        date_pattern = re.compile(r"For the period ending (?P<date_month>[A-Z][a-z]{2,8}) (?P<date_day>\d{1,2}), (?P<date_year>\d{4})")
+        for line in date_page.split("\n"):
+            statement_date_match = date_pattern.search(line)
+            if statement_date_match:
+                statement_month = statement_date_match.group("date_month")
+                statement_day = statement_date_match.group("date_day")
+                statement_year = statement_date_match.group("date_year")
+                statement_date = statement_month + " " + statement_day + " " + statement_year
+        
+        # table of money flows
+        column_lines = [60, 100, 345, 430, 490, 533.9599995]
         for page in pdf.pages:
-            if page.page_number == 1:
+            if page.page_number == 1: #first page table starts at bottom of page
                 page1_table_area = page.crop((60.0, 526, 600 ,735.0)) # x0, top, x1, bottom
                 first_row = page1_table_area.bbox[1]
                
@@ -79,85 +107,53 @@ def parse_chequingstatement(pdf_path):
                     "horizontal_strategy": "lines",
                     "explicit_horizontal_lines": [first_row]
                     })
-
-            else:
+                
+            else: # table starts at top
                 pagex_table_area = page.crop((60, 110, 600, 735))
-                # first_row = page1_table_area.bbox[1]
-                # debugging
-                pagex_table_image = pagex_table_area.to_image()
-                pagex_table_image.debug_tablefinder(table_settings={
+                first_row = pagex_table_area.bbox[1]
+                
+                table = pagex_table_area.extract_table({
                     "vertical_strategy": "explicit",
                     "explicit_vertical_lines": column_lines,
                     "horizontal_strategy": "lines",
-                    # "explicit_horizontal_lines": [first_row]
+                    "explicit_horizontal_lines": [first_row]
+                })
+
+            if table:
+                pattern = re.compile(r"(?P<date_month>[A-Z][a-z]{2})(?P<date_day>\d{1,2})")
+                for row in table:
+                    # print(row)
+                    datetext = pattern.search(row[0])
+                    if datetext:
+                        date_month = datetext.group("date_month")
+                        date_day = datetext.group("date_day")
+                    desc = row[1]
+                    outflow = row[2]
+                    inflow = row[3]
+                    balance = row[4]
+                    final_balance = balance
+                    #########################
+                    transactions.append({
+                        "date": date_month + " " + date_day,
+                        "description": desc,
+                        "outflow": outflow,
+                        "inflow": inflow,
+                        "balance": balance
                     })
-                pagex_table_image.show()
-                pagex_table_image.save("BankStatementPDFs/secondpagechequingtable.png")
-                test = pagex_table_area.debug_tablefinder(table_settings={"vertical_strategy": "explicit", "explicit_vertical_lines": column_lines, "horizontal_strategy": "lines",})
-                print(test.cells)
-                
-                # table = page.extract_tables({
-                #     "vertical_strategy": "explicit",
-                #     "explicit_vertical_lines": column_lines,
-                #     "horizontal_strategy": "lines",
-                #     # "explicit_horizontal_lines": 
-                # })
-                # for row in table:
-                #     print(row)
-
-            # # visual debugging
-            # image = page.to_image()
-            # image.debug_tablefinder(table_settings={"vertical_strategy": "text", "horizontal_strategy": "lines",})
-            # image.show()
-            # test = page.debug_tablefinder(table_settings={"vertical_strategy": "text", "horizontal_strategy": "lines",})
-            # print(test.cells)
-
-            # if table:
-            #     prev_balance = 0
-            #     for row in table:
-            #         # print(row)
-            #         if len(row) == 4:
-            #             date_desc = row[0]
-            #             date = date_desc[0:3] + " " + date_desc[3:5]
-            #             desc = date_desc[6:]
-            #             outflow = row[1]
-            #             inflow = row[2]
-            #             balance = row[3]
-            #             transactions.append({
-            #                 "date": date,
-            #                 "desc": desc,
-            #                 "outflow": outflow,
-            #                 "inflow": inflow
-            #             })
-            #             prev_balance = balance
-
-            #         elif len(row) == 1:
-            #             pattern = re.compile(r"(?P<trans_month>[A-Z][a-z]{2})(?P<trans_date>\d{1,2})\s(?P<desc>.+?) (?P<amount>\d+\.\d{2}) (?P<balance>\d+\.\d{2})$")
-            #             match = pattern.search(row[0])
-            #             if match:
-            #                 amount = match.group("amount")
-            #                 balance = match.group("balance")
-            #                 # if (balance - amount) == transactions:
-
-            #                 transactions.append({
-            #                     "date": match.group("trans_month") +" "+ match.group("trans_date"),
-            #                     "desc": match.group("desc"),
-            #                     "amount": amount,
-            #                     "balance": balance
-            #                     # gotta do some calc with the previous entry to see if balance grows or shrinks to know if this is an inflow or outflow
-            #                 })
-            #     print(transactions)
-            # print(f"Page {page.page_number}:\\n{table}\\n")
-
+                    if desc == "Openingbalance":
+                        opening_balance = balance
+    # print(transactions)
+    # print(statement_date)
+    return statement_date, transactions, opening_balance, final_balance
 
 
 # something about protecting debug prints
 if __name__ == "__main__":
     statement_date, transactions, total = parse_creditstatement("BankStatementPDFs/June 21, 2026.pdf")
-    # print(statement_date)
-    # print(transactions)
-    # print(total)
-    list_of_lists = transaction_to_rows(transactions)
-    # print(list_of_lists)
+    credit_list = credit_transaction_to_rows(transactions)
 
-    parse_chequingstatement("BankStatementPDFs/June 25, 2026.pdf")
+    statement_date, transactions, opening_balance, final_balance = parse_chequingsavingsstatement("BankStatementPDFs/June 25, 2026.pdf")
+    chequing_list = chequingsavings_transaction_to_rows(transactions)
+
+    statement_date, transactions, opening_balance, final_balance = parse_chequingsavingsstatement("BankStatementPDFs/June 25, 2026_savings.pdf")
+    savings_list = chequingsavings_transaction_to_rows(transactions)

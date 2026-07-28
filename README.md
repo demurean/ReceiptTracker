@@ -48,4 +48,9 @@ all bank statements -> into one sheet -> parse into separate months biweekly (2x
 ## July 24th:
 - today is a short one, since I have a dragonboat race to get to with Shockwave soon
 - first row on first page is included! never thought that I can both use the strategy and explicit. Thanks Claude
-- second page onwards, the same strategy does not work. 
+- second page onwards, same strategy does work, but the parser outputs the list a bit odd. as it's nested?
+
+## July 28th:
+TODO: when editing the same month for chequing/savings, make sure to edit the final_balance? 
+- thankfully the savings format is the same as chequing. I can reuse the same format as chequing I just had to expand the columns since the values are larger...
+- now i need to think on how to separate the values to different months since the statements are always released 3/4th of the month and includes the previous month too
